@@ -34,6 +34,7 @@ class WordsDictionary():
         text = []
 
         for number in vector:
-            text.append(self.int_to_word[number])
+            if number != self.word_to_int['<PAD>']:
+                text.append(self.int_to_word[number])
 
         return ' '.join(text)

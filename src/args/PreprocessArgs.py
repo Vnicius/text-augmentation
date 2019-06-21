@@ -8,4 +8,5 @@ class PreprocessArgs():
         parser.add_argument('input_file', help='Input file path')
         parser.add_argument(
             '-o', '--output', help='Output directory', default='prep')
+        parser.add_argument('-l', '--length', help='Max text length', default=0, type=int)
         self.args = parser.parse_args()
