@@ -1,0 +1,7 @@
+{
+  "python.pythonPath": "/home/vinicius/anaconda3/envs/augmentation/bin/python",
+  "[python]": {
+    "editor.insertSpaces": true,
+    "editor.tabSize": 4
+  }
+}
