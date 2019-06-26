@@ -1,4 +1,5 @@
 # -*- conding: utf-8 -*-
+from collections import OrderedDict
 
 
 class WordsDictionary():
@@ -14,8 +15,13 @@ class WordsDictionary():
             except KeyError:
                 self.words_list[word] = 0
 
-    def build_dict(self):
+    def build_dict(self, limit=0):
+        self.words_list = dict(OrderedDict(self.words_list.items()))
+
         for word in self.words_list:
+            if limit and len(self.word_to_int) == limit:
+                break
+
             self.word_to_int[word] = len(self.word_to_int) + 1
             self.int_to_word[len(self.int_to_word) + 1] = word
 
