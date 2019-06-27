@@ -12,9 +12,10 @@ from src.utils.utils import crate_dir
 from src.args.TrainArgs import TrainArgs
 
 
-def create_model(dict_len, max_seq_len, embedding_size=32, lstm_size=128):
+def create_model(dict_len, max_seq_len, embedding_size=64, lstm_size=128):
     model = Sequential()
     model.add(Embedding(dict_len, embedding_size, input_length=max_seq_len))
+    model.add(Bidirectional(LSTM(lstm_size, return_sequences=True)))
     model.add(Bidirectional(LSTM(lstm_size)))
     model.add(Dense(dict_len))
     model.add(Activation('softmax'))
