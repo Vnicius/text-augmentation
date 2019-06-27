@@ -10,16 +10,18 @@ from src.args.PreprocessArgs import PreprocessArgs
 from src.utils.utils import crate_dir
 
 POINTS = re.compile(r'([\.\,\?\!])(\D|$)')
-SYMBOLS = re.compile(r'([\(\)\[\]\{\}])')
+SYMBOLS = re.compile(r'([\(\)\[\]\{\}/;:])')
 QUOTES = re.compile(r'\'([^\']+)\'|$')
 DB_QUOTES = re.compile(r'\"([^\"]+)\"|$')
 TREE_DOTS = re.compile(r'\.(\s+\.)+')
+TAGS = re.compile(r'<[^>]+>')
 
 
 def preprocess(text):
     processed_text = text.lower()
     words = []
 
+    processed_text = TAGS.sub(r'', processed_text)
     processed_text = POINTS.sub(r' \1 \2', processed_text)
     processed_text = SYMBOLS.sub(r'', processed_text)
     processed_text = QUOTES.sub(r"\1", processed_text)
@@ -47,18 +49,22 @@ def main(input_file, output_dir, max_size=0):
     words_dict = WordsDictionary()
     infos = {}
     max_len = 0
+    count = 0
 
     with open(input_file, 'r', encoding='utf-8') as input_text, open(os.path.join(output_dir, 'data.train'), 'w', encoding='utf-8') as output_train:
         try:
             while True:
                 text = input_text.readline().replace("\n", '')
-
-                if not len(text):
-                    break
+                
+                count += 1
+                print(count)
 
                 text = preprocess(text)
                 text_size = len(text.split(' '))
 
+                if text_size < 5:
+                    continue
+                
                 if max_size:
                     if text_size > max_size:
                         text = ' '.join(text.split(' ')[:max_size])
@@ -68,11 +74,8 @@ def main(input_file, output_dir, max_size=0):
 
                 words_dict.add_text(text)
                 output_train.write(text + "\n")
-                # src, tgt = generate_src_tgt(text)
+                
 
-                # for s, t in zip(src, tgt):
-                #     output_src.write(s + '\n')
-                #     output_tgt.write(t + '\n')
         except EOFError:
             pass
 
