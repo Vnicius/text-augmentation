@@ -3,9 +3,8 @@ import os
 import re
 import pickle
 import json
-from keras.utils import to_categorical
 import numpy as np
-from src.WordsDictionary import WordsDictionary
+from fastai.text import TextLMDataBunch
 from src.args.PreprocessArgs import PreprocessArgs
 from src.utils.utils import crate_dir
 
@@ -45,48 +44,48 @@ def generate_src_tgt(text):
 
 
 def main(input_file, output_dir, max_size=0):
-    crate_dir(output_dir)
-    words_dict = WordsDictionary()
-    infos = {}
-    max_len = 0
-    count = 0
+    train_path = os.path.join(output_dir, 'train')
 
-    with open(input_file, 'r', encoding='utf-8') as input_text, open(os.path.join(output_dir, 'data.train'), 'w', encoding='utf-8') as output_train:
+    crate_dir(output_dir)
+    crate_dir(train_path)
+    count = 0
+    blank_limit = 5
+    blank_count = 0
+
+    with open(input_file, 'r', encoding='utf-8') as input_text, open(os.path.join(train_path, 'train.txt'), 'w', encoding='utf-8') as output_train:
         try:
             while True:
                 text = input_text.readline().replace("\n", '')
-                
+
                 count += 1
                 print(count)
 
                 text = preprocess(text)
                 text_size = len(text.split(' '))
 
+                if text_size == 1:
+                    blank_count += 1
+
+                if blank_count == blank_limit:
+                    break
+
                 if text_size < 5:
                     continue
-                
+
                 if max_size:
                     if text_size > max_size:
                         text = ' '.join(text.split(' ')[:max_size])
-                else:
-                    if text_size > max_len:
-                        max_len = text_size
 
-                words_dict.add_text(text)
+                blank_count = 0
                 output_train.write(text + "\n")
-                
 
         except EOFError:
             pass
 
-    words_dict.build_dict(32000)
-    pickle.dump(words_dict, open(os.path.join(output_dir, 'data.dict'), 'wb'))
+        data_lm = TextLMDataBunch.from_folder(
+            output_dir, train='train', max_vocab=30000)
 
-    with open(os.path.join(output_dir, 'data.meta.json'), 'w', encoding='utf-8') as infos_file:
-        infos['max_seq_size'] = max_size if max_size else max_len
-        infos['dict_size'] = len(words_dict.word_to_int)
-
-        json.dump(infos, infos_file)
+        data_lm.save('data_save.pkl')
 
 
 def text_to_vec(text, word_dict, max_size=0):
