@@ -6,7 +6,7 @@ class WordsDictionary():
     def __init__(self):
         self.words_list = {}
         self.word_to_int = {'<PAD>': 0, '<UNK>': 1}
-        self.int_to_word = {0: '<PAD>', 1: '<UNK>'}
+        self.int_to_word = ['<PAD>', '<UNK>']
 
     def add_text(self, text):
         for word in text.split(' '):
@@ -23,7 +23,7 @@ class WordsDictionary():
                 break
 
             self.word_to_int[word] = len(self.word_to_int) + 1
-            self.int_to_word[len(self.int_to_word) + 1] = word
+            self.int_to_word.append(word)
 
     def text_to_int(self, text):
         vector = []

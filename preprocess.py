@@ -4,7 +4,8 @@ import re
 import pickle
 import json
 import numpy as np
-from fastai.text import TextLMDataBunch
+from fastai.text import TextLMDataBunch, transform
+from src.WordsDictionary import WordsDictionary
 from src.args.PreprocessArgs import PreprocessArgs
 from src.utils.utils import crate_dir
 
@@ -49,24 +50,24 @@ def main(input_file, output_dir, max_size=0):
     crate_dir(output_dir)
     crate_dir(train_path)
     count = 0
-    blank_limit = 5
+    blank_limit = 1000
     blank_count = 0
+    words_dict = WordsDictionary()
 
     with open(input_file, 'r', encoding='utf-8') as input_text, open(os.path.join(train_path, 'train.txt'), 'w', encoding='utf-8') as output_train:
         try:
             while True:
                 text = input_text.readline().replace("\n", '')
-
                 count += 1
-                print(count)
+
+                if not count % 100000:
+                    print(count)
 
                 text = preprocess(text)
                 text_size = len(text.split(' '))
+                blank_count += 1
 
-                if text_size == 1:
-                    blank_count += 1
-
-                if blank_count == blank_limit:
+                if blank_count > blank_limit:
                     break
 
                 if text_size < 5:
@@ -77,13 +78,33 @@ def main(input_file, output_dir, max_size=0):
                         text = ' '.join(text.split(' ')[:max_size])
 
                 blank_count = 0
+                words_dict.add_text(text)
                 output_train.write(text + "\n")
 
         except EOFError:
             pass
+        
+        words_dict.build_dict(30000)
+        pickle.dump(words_dict, open(os.path.join(output_dir, 'data.dict'), 'wb'))
 
-        data_lm = TextLMDataBunch.from_folder(
-            output_dir, train='train', max_vocab=30000)
+    with open(os.path.join(train_path, 'train.txt'), 'r', encoding='utf-8') as train:
+        
+        train_data = []
+        try:
+            while True:
+                line = train.readline()
+
+                if not line:
+                    break
+                
+                train_data.append(np.array(words_dict.text_to_int(line.replace('\n', ''))))
+        except:
+            pass
+
+        train_data = np.array(train_data)
+
+        data_lm = TextLMDataBunch.from_ids(
+            output_dir, transform.Vocab(words_dict.int_to_word), train_ids=train_data, valid_ids=[[]])
 
         data_lm.save('data_save.pkl')
 
