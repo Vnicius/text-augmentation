@@ -15,5 +15,6 @@ class TrainArgs():
             '-s', '--steps', help="Steps per epoch", type=int, default=10000)
         parser.add_argument(
             '-e', '--epochs', help="Number of epochs", type=int, default=10)
-        parser.add_argument('-m', '--model_dir', help='Model directory', type=str, default='')
+        parser.add_argument('-c', '--checkpoint_dir',
+                            help='Model directory', type=str, default='')
         self.args = parser.parse_args()

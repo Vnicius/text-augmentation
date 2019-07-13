@@ -3,11 +3,27 @@ from os import path
 import pickle
 import json
 import collections
+import glob
 from random import shuffle
+import re
 import numpy as np
 from fastai.text import *
 from src.utils.utils import crate_dir
 from src.args.TrainArgs import TrainArgs
+
+
+def get_last_epoch(checkpoint_dir):
+    checkpoints = glob.glob(path.join(checkpoint_dir, '*.pth'))
+    values = []
+
+    for check in checkpoints:
+        match = re.search(r'check_(\d+)', check)
+
+        if match:
+            values.append(int(match.group(1)))
+
+    values.sort()
+    return values[-1] if values else 0
 
 
 def train(model, epochs):
@@ -15,7 +31,7 @@ def train(model, epochs):
     return model.fit_generator(generator, steps_per_epoch=steps_per_epoch, epochs=epochs, callbacks=callbacks)
 
 
-def main(data_dir, output_dir, model_dir, epochs):
+def main(data_dir, output_dir, checkpoint_dir, epochs):
 
     crate_dir(output_dir)
 
@@ -25,7 +41,7 @@ def main(data_dir, output_dir, model_dir, epochs):
 
     try:
         print("Loading checkpoint!")
-        model.load_encoder(model_dir)
+        model.load_encoder(checkpoint_dir)
     except FileNotFoundError:
         print("No checkpoint!")
         pass
@@ -33,54 +49,45 @@ def main(data_dir, output_dir, model_dir, epochs):
     for _ in range(epochs):
         model.unfreeze()
         model.fit(1)
-        model.save_encoder(model_dir)
+        model.save_encoder(checkpoint_dir)
 
-def main2(data_dir, output_dir, model_dir, epochs):
+
+def main2(data_dir, output_dir, epochs):
 
     crate_dir(output_dir)
-    phrases = []
 
-    with open(path.join(data_dir, 'train', 'train.txt'), 'r', encoding='utf-8') as txt:
-        phrases = [s for line in txt for s in line.replace('\n', '').split()]
-    
-    freq = collections.Counter([w for s in phrases for w in s]) 
-
-    max_vocab = 30000
-    min_freq = 5
-
-    itos = [o for o,c in freq.most_common(max_vocab) if c>min_freq] # getting rid of the rare words
-    itos.insert(0, '_pad_') # 
-    itos.insert(0, '_unk_') # itos is the list of all the strings in the vocab
-
-    stoi = collections.defaultdict(lambda:0, {v:k for k,v in enumerate(itos)})
-
-    # creating a index representation for our train and validation dataset
-    trn_lm = np.array([[stoi[o] for o in p] for p in phrases])
-
-    em_sz,nh,nl = 400,1150,3
-    wd=1e-7
-    bptt=70
+    em_sz, nh, nl = 400, 1150, 3
+    wd = 1e-7
+    bptt = 70
     opt_fn = partial(optim.Adam, betas=(0.8, 0.99))
     bs = 32
+    lr = 1e-3
 
-    data = TextLMDataBunch.from_ids(data_dir, text.transform.Vocab(itos), train_ids=trn_lm[:int(len(trn_lm))], valid_ids=trn_lm[int(len(trn_lm)):])
+    last_epoch = get_last_epoch(path.join(args.data_dir, 'models'))
 
+    print('\033[1;34m', 'Loading data', '\033[0;0m')
+    data = load_data(data_dir, 'data_save.pkl')
     model = language_model_learner(data, text.models.AWD_LSTM, drop_mult=0.5)
 
     try:
-        print("Loading checkpoint!")
-        model.load_encoder(model_dir)
+        print('\033[1;34m', 'Loading checkpoint', '\033[0;0m')
+        model.load("last")
+        print('\033[0;32m', 'Loaded last checkpoint', '\033[0;0m')
     except FileNotFoundError:
-        print("No checkpoint!")
+        print('\033[1;31m', 'No checkpoint founded', '\033[0;0m')
         pass
 
-    for _ in range(epochs):
+    for i in range(last_epoch + 1, last_epoch + 1 + epochs):
         model.unfreeze()
-        model.fit(1)
-        model.save_encoder(model_dir)
+        model.fit(1, lr=slice(lr / 2.6, lr), wd=1e-7)
+        model.save("check_" + str(i))
+
+    print('\033[0;32m', 'Saving model', '\033[0;0m')
+    model.save("last")
+    model.export("model.pkl")
 
 
 if __name__ == '__main__':
     args = TrainArgs().args
 
-    main2(args.data_dir, args.output, model_dir=args.model_dir, epochs=args.epochs)
+    main2(args.data_dir, args.output, epochs=args.epochs)
