@@ -86,9 +86,9 @@ def main(input_file, output_dir, max_size=0):
     phrases = []
 
     with open(os.path.join(output_dir, 'train.txt'), 'r', encoding='utf-8') as txt:
-        phrases = [s for line in txt for s in line.replace('\n', '').split()]
+        phrases = [line.replace('\n', '').split(' ') for line in txt]
 
-    freq = collections.Counter([w for s in phrases for w in s.split(' ')])
+    freq = collections.Counter([w for s in phrases for w in s])
 
     max_vocab = 30000
     min_freq = 5
@@ -97,14 +97,15 @@ def main(input_file, output_dir, max_size=0):
     itos = [o for o, c in freq.most_common(max_vocab) if c > min_freq]
     itos.insert(0, '_pad_')
     itos.insert(0, '_unk_')  # itos is the list of all the strings in the vocab
-
+    
     stoi = collections.defaultdict(
         lambda: 0, {v: k for k, v in enumerate(itos)})
-
+    max_data =  len(phrases) - 2
     # creating a index representation for our train and validation dataset
+
     trn_lm = np.array([[stoi[o] for o in p] for p in phrases])
     data_lm = TextLMDataBunch.from_ids(output_dir, transform.Vocab(
-        itos), train_ids=trn_lm[:int(len(trn_lm))], valid_ids=trn_lm[int(len(trn_lm)):])
+        itos), train_ids=trn_lm[:max_data], valid_ids=trn_lm[max_data:max_data+1])
 
     #np.save(output_dir, trn_lm)
     #pickle.dump(itos, open(os.path.join(output_dir, 'itos.pkl'), 'wb'))
