@@ -88,7 +88,7 @@ def main(input_file, output_dir, max_size=0):
     with open(os.path.join(output_dir, 'train.txt'), 'r', encoding='utf-8') as txt:
         phrases = [s for line in txt for s in line.replace('\n', '').split()]
 
-    freq = collections.Counter([w for s in phrases for w in s])
+    freq = collections.Counter([w for s in phrases for w in s.split(' ')])
 
     max_vocab = 30000
     min_freq = 5
