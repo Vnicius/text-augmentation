@@ -3,6 +3,7 @@ import os
 import re
 import pickle
 import json
+import collections
 import numpy as np
 from fastai.text import TextLMDataBunch, transform
 from src.WordsDictionary import WordsDictionary
@@ -45,16 +46,12 @@ def generate_src_tgt(text):
 
 
 def main(input_file, output_dir, max_size=0):
-    train_path = os.path.join(output_dir, 'train')
-
     crate_dir(output_dir)
-    crate_dir(train_path)
     count = 0
     blank_limit = 1000
     blank_count = 0
-    words_dict = WordsDictionary()
 
-    with open(input_file, 'r', encoding='utf-8') as input_text, open(os.path.join(train_path, 'train.txt'), 'w', encoding='utf-8') as output_train:
+    with open(input_file, 'r', encoding='utf-8') as input_text, open(os.path.join(output_dir, 'train.txt'), 'w', encoding='utf-8') as output_train:
         try:
             while True:
                 text = input_text.readline().replace("\n", '')
@@ -70,7 +67,7 @@ def main(input_file, output_dir, max_size=0):
                 if blank_count > blank_limit:
                     break
 
-                if text_size < 5:
+                if text_size < 2:
                     continue
 
                 if max_size:
@@ -78,35 +75,42 @@ def main(input_file, output_dir, max_size=0):
                         text = ' '.join(text.split(' ')[:max_size])
 
                 blank_count = 0
-                words_dict.add_text(text)
                 output_train.write(text + "\n")
 
         except EOFError:
             pass
-        
-        words_dict.build_dict(30000)
-        pickle.dump(words_dict, open(os.path.join(output_dir, 'data.dict'), 'wb'))
 
-    with open(os.path.join(train_path, 'train.txt'), 'r', encoding='utf-8') as train:
-        
-        train_data = []
-        try:
-            while True:
-                line = train.readline()
+        # pickle.dump(words_dict, open(os.path.join(output_dir, 'data.dict'), 'wb'))
 
-                if not line:
-                    break
-                
-                train_data.append(np.array(words_dict.text_to_int(line.replace('\n', ''))))
-        except:
-            pass
+    print('\033[1;34m', 'Creating the Data Buntch', '\033[0;0m')
+    phrases = []
 
-        train_data = np.array(train_data)
+    with open(os.path.join(output_dir, 'train.txt'), 'r', encoding='utf-8') as txt:
+        phrases = [line.replace('\n', '').split(' ') for line in txt]
 
-        data_lm = TextLMDataBunch.from_ids(
-            output_dir, transform.Vocab(words_dict.int_to_word), train_ids=train_data, valid_ids=[[]])
+    freq = collections.Counter([w for s in phrases for w in s])
 
-        data_lm.save('data_save.pkl')
+    max_vocab = 30000
+    min_freq = 5
+
+    # getting rid of the rare words
+    itos = [o for o, c in freq.most_common(max_vocab) if c > min_freq]
+    itos.insert(0, '_pad_')
+    itos.insert(0, '_unk_')  # itos is the list of all the strings in the vocab
+    
+    stoi = collections.defaultdict(
+        lambda: 0, {v: k for k, v in enumerate(itos)})
+    max_data =  len(phrases) - 2
+    # creating a index representation for our train and validation dataset
+
+    trn_lm = np.array([[stoi[o] for o in p] for p in phrases])
+    data_lm = TextLMDataBunch.from_ids(output_dir, transform.Vocab(
+        itos), train_ids=trn_lm[:max_data], valid_ids=trn_lm[max_data:max_data+1])
+
+    #np.save(output_dir, trn_lm)
+    #pickle.dump(itos, open(os.path.join(output_dir, 'itos.pkl'), 'wb'))
+    #pickle.dump(dict(stoi), open(os.path.join(output_dir, 'stoi.pkl'), 'wb'))
+    data_lm.save('data_save.pkl')
 
 
 def text_to_vec(text, word_dict, max_size=0):
