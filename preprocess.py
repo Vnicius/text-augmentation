@@ -97,10 +97,10 @@ def main(input_file, output_dir, max_size=0):
     itos = [o for o, c in freq.most_common(max_vocab) if c > min_freq]
     itos.insert(0, '_pad_')
     itos.insert(0, '_unk_')  # itos is the list of all the strings in the vocab
-    
+
     stoi = collections.defaultdict(
         lambda: 0, {v: k for k, v in enumerate(itos)})
-    max_data =  len(phrases) - 2
+    max_data = len(phrases) - 2
     # creating a index representation for our train and validation dataset
 
     trn_lm = np.array([[stoi[o] for o in p] for p in phrases])
