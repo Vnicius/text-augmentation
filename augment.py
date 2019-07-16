@@ -5,7 +5,7 @@ from collections import Counter
 import numpy as np
 from fastai.text import *
 import torch
-from preprocess import preprocess
+from vlibras_translate.translation import Translation
 from src.args.AugmentArgs import AugmentArgs
 from src.AugmentationItem import AugmentationItem
 from src.RareWord import RareWord
@@ -68,6 +68,7 @@ def has_augmentation(augmentations, sentence_id, position, word_id):
 def main(original_data, model_path, output_file, max_freq, topk, n_augment):
     augmentations = []
     model_dir, model_name = get_dir_and_file(model_path)
+    translator = Translation()
 
     print('\033[1;34m', 'Loading model', '\033[0;0m')
     model = load_learner(model_dir, model_name)
@@ -80,15 +81,15 @@ def main(original_data, model_path, output_file, max_freq, topk, n_augment):
 
     with open(original_data, 'r', encoding='utf-8') as od:
         for line in od:
-            original.append(preprocess(line.replace('\n', '')).split(' '))
+            text, _ = translator.preprocess_train_files(line)
+            original.append(text.split(' '))
 
     print('\033[1;34m', 'Counting frequences', '\033[0;0m')
     freq = Counter([word for line in original for word in line])
     print('\033[1;34m', 'Getting rare words', '\033[0;0m')
-
+    print(freq)
     rare_words = [k for k, v in freq.most_common(30000) if v <= max_freq]
-    rare_words = filter_rare_words(rare_words)
-
+    print(rare_words)
     rare_words_ids = [vocab.stoi[w] for w in rare_words]
     rare_words_ids = [RareWord(i, vocab.itos[i])
                       for i in rare_words_ids if i != 0]
