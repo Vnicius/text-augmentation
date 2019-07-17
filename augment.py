@@ -65,7 +65,7 @@ def has_augmentation(augmentations, sentence_id, position, word_id):
     return False
 
 
-def main(original_data, model_path, output_file, max_freq, topk, n_augment):
+def main(original_data, original_data_prep, model_path, output_file, max_freq, topk, n_augment):
     augmentations = []
     model_dir, model_name = get_dir_and_file(model_path)
     translator = Translation()
@@ -78,14 +78,18 @@ def main(original_data, model_path, output_file, max_freq, topk, n_augment):
 
     print('\033[1;34m', 'Getting original data', '\033[0;0m')
     original = []
+    original_prep = []
 
     with open(original_data, 'r', encoding='utf-8') as od:
         for line in od:
-            text, _ = translator.preprocess_train_files(line)
-            original.append(text.split(' '))
+            original.append(line.replace('\n', '').split(' '))
+
+    with open(original_data_prep, 'r', encoding='utf-8') as prep_od:
+        for line in prep_od:
+            original_prep.append(line.replace('\n', '').split(' '))
 
     print('\033[1;34m', 'Counting frequences', '\033[0;0m')
-    freq = Counter([word for line in original for word in line])
+    freq = Counter([word for line in original_prep for word in line])
     print('\033[1;34m', 'Getting rare words', '\033[0;0m')
     print(freq)
     rare_words = [k for k, v in freq.most_common(30000) if v <= max_freq]
@@ -103,13 +107,13 @@ def main(original_data, model_path, output_file, max_freq, topk, n_augment):
         while was_augmented:
             for i in range(1, 5):
                 was_augmented = False
-                for index, sent in enumerate(original):
+                for index, sent in enumerate(original_prep):
                     if i < len(sent):
                         top_words = bests(model, ' '.join(sent[:i]), topk)
 
                         for r in rare_words_ids:
                             if r.id in top_words and not has_augmentation(augmentations, index, i, r.id) and r.occurrences < n_augment:
-                                augmented = sent[:]
+                                augmented = original[index][:]
                                 augmented[i] = vocab.itos[r.id]
                                 augmentations.append(
                                     AugmentationItem(index, i, r.id))
@@ -121,5 +125,5 @@ def main(original_data, model_path, output_file, max_freq, topk, n_augment):
 if __name__ == '__main__':
     args = AugmentArgs().args
 
-    main(original_data=args.original_data, model_path=args.model_path, output_file=args.output_file,
+    main(original_data=args.original_data, original_data_prep=args.original_data_preprocessed ,model_path=args.model_path, output_file=args.output_file,
          max_freq=args.max_freq, topk=args.top_k, n_augment=args.n_augment)

@@ -8,6 +8,8 @@ class AugmentArgs():
         parser.add_argument(
             'original_data', help='Original data file', type=str)
         parser.add_argument(
+            'original_data_preprocessed', help='Original data file with preprocess', type=str)
+        parser.add_argument(
             'model_path', help='Path of the model file', type=str)
         parser.add_argument(
             'output_file', help='Output file with the augmented data', type=str)
