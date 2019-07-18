@@ -4,12 +4,15 @@ import re
 import pickle
 import json
 import collections
+import multiprocessing
 import numpy as np
 from vlibras_translate.translation import Translation
 from fastai.text import TextLMDataBunch, transform
 from src.WordsDictionary import WordsDictionary
 from src.args.PreprocessArgs import PreprocessArgs
 from src.utils.utils import crate_dir
+
+TRANSLATOR = Translation()
 
 POINTS = re.compile(r'([\.\,\?\!])(\D|$)')
 SYMBOLS = re.compile(r'([\(\)\[\]\{\}/;:])')
@@ -45,18 +48,27 @@ def generate_src_tgt(text):
     for i in range(1, len(text_words)):
         yield((' '.join(text_words[:i]), text_words[i]))
 
+def preprocessing(line):
+    text, _ = TRANSLATOR.preprocess_train_files(line)
+    return text
+
+def preprocessing_for_augmentation(line):
+    text = TRANSLATOR.preprocess_pt(line)
+    prep,_ = TRANSLATOR.preprocess_train_files(line)
+    return text, prep
+
 
 def main(input_file, output_dir, max_size=0):
     crate_dir(output_dir)
     count = 0
     blank_limit = 1000
     blank_count = 0
-    translator = Translation()
+    cpus = multiprocessing.cpu_count() - 1
+    p = multiprocessing.Pool(cpus)
 
     with open(input_file, 'r', encoding='utf-8') as input_text, open(os.path.join(output_dir, 'train.txt'), 'w', encoding='utf-8') as output_train:
         count = 0
-        for line in input_text:
-            text, _ = translator.preprocess_train_files(line)
+        for text in p.imap(preprocessing, input_text):
             text_size = len(text.split(' '))
 
             count += 1
@@ -106,27 +118,24 @@ def main(input_file, output_dir, max_size=0):
 
 def preprocess_for_augmentation(input_file, output_dir, max_size=0):
     file_name = os.path.split(input_file)[-1]
+    cpus = multiprocessing.cpu_count() - 1
+    p = multiprocessing.Pool(cpus)
 
     with open(input_file, 'r', encoding='utf-8') as input_text, open(os.path.join(output_dir, file_name), 'w', encoding='utf-8') as output_file, open(os.path.join(output_dir, 'prep_' + file_name), 'w', encoding='utf-8') as output_prep_file:
-        translator = Translation()
         count = 0
 
-        for line in input_text:
-            txt = translator.preprocess_pt(line)
-
+        for txt, prep in p.imap(preprocessing_for_augmentation, input_text):
             if max_size:
                 if len(txt.split(' ')) > max_size:
                     txt = txt[:max_size]
 
             output_file.write(txt + '\n')
 
-            txt, _ = translator.preprocess_train_files(line)
-
             if max_size:
-                if len(txt.split(' ')) > max_size:
-                    txt = txt[:max_size]
+                if len(prep.split(' ')) > max_size:
+                    prep = prep[:max_size]
 
-            output_prep_file.write(txt + '\n')
+            output_prep_file.write(prep + '\n')
 
             count += 1
             print(count)
