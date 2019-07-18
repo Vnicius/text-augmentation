@@ -73,7 +73,6 @@ def main(input_file, output_dir, max_size=0):
             output_train.write(text + '\n')
         # pickle.dump(words_dict, open(os.path.join(output_dir, 'data.dict'), 'wb'))
 
-    
     print('\033[1;34m', 'Creating the Data Buntch', '\033[0;0m')
     phrases = []
 
@@ -92,25 +91,26 @@ def main(input_file, output_dir, max_size=0):
 
     stoi = collections.defaultdict(
         lambda: 0, {v: k for k, v in enumerate(itos)})
-    max_data = len(phrases) - 2
+    max_data = int(len(phrases) * 0.9)
     # creating a index representation for our train and validation dataset
 
     trn_lm = np.array([[stoi[o] for o in p] for p in phrases])
     data_lm = TextLMDataBunch.from_ids(output_dir, transform.Vocab(
-        itos), train_ids=trn_lm[:max_data], valid_ids=trn_lm[max_data:max_data+1])
+        itos), train_ids=trn_lm[:max_data], valid_ids=trn_lm[max_data:])
 
     #np.save(output_dir, trn_lm)
     #pickle.dump(itos, open(os.path.join(output_dir, 'itos.pkl'), 'wb'))
     #pickle.dump(dict(stoi), open(os.path.join(output_dir, 'stoi.pkl'), 'wb'))
     data_lm.save('data_save.pkl')
 
+
 def preprocess_for_augmentation(input_file, output_dir, max_size=0):
     file_name = os.path.split(input_file)[-1]
 
     with open(input_file, 'r', encoding='utf-8') as input_text, open(os.path.join(output_dir, file_name), 'w', encoding='utf-8') as output_file, open(os.path.join(output_dir, 'prep_' + file_name), 'w', encoding='utf-8') as output_prep_file:
         translator = Translation()
-        count = 0        
-        
+        count = 0
+
         for line in input_text:
             txt = translator.preprocess_pt(line)
 
@@ -127,10 +127,10 @@ def preprocess_for_augmentation(input_file, output_dir, max_size=0):
                     txt = txt[:max_size]
 
             output_prep_file.write(txt + '\n')
-            
+
             count += 1
             print(count)
-        
+
 
 if __name__ == '__main__':
     args = PreprocessArgs().args

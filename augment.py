@@ -33,7 +33,7 @@ def filter_rare_words(rare_words):
     return words
 
 
-def bests(learner, text: str, topk: int, n_words: int = 1, no_unk: bool = True, temperature: float = 1.0, min_p: float = None, sep: str = ' ',
+def bests(learner, text: str, topk: int, n_words: int = 1, no_unk: bool = True, temperature: float = 0.5, min_p: float = None, sep: str = ' ',
           decoder=decode_spec_tokens):
 
     ds = learner.data.single_dl.dataset
@@ -91,9 +91,9 @@ def main(original_data, original_data_prep, model_path, output_file, max_freq, t
     print('\033[1;34m', 'Counting frequences', '\033[0;0m')
     freq = Counter([word for line in original_prep for word in line])
     print('\033[1;34m', 'Getting rare words', '\033[0;0m')
-    print(freq)
+
     rare_words = [k for k, v in freq.most_common(30000) if v <= max_freq]
-    print(rare_words)
+
     rare_words_ids = [vocab.stoi[w] for w in rare_words]
     rare_words_ids = [RareWord(i, vocab.itos[i])
                       for i in rare_words_ids if i != 0]
@@ -125,5 +125,5 @@ def main(original_data, original_data_prep, model_path, output_file, max_freq, t
 if __name__ == '__main__':
     args = AugmentArgs().args
 
-    main(original_data=args.original_data, original_data_prep=args.original_data_preprocessed ,model_path=args.model_path, output_file=args.output_file,
+    main(original_data=args.original_data, original_data_prep=args.original_data_preprocessed, model_path=args.model_path, output_file=args.output_file,
          max_freq=args.max_freq, topk=args.top_k, n_augment=args.n_augment)
