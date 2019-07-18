@@ -19,4 +19,6 @@ class AugmentArgs():
             '--top-k', help='Top K words considered in the augmentations', type=int, default=5)
         parser.add_argument(
             '--n-augment', help='Number of augmentations of a word', type=int, default=5)
+        parser.add_argument(
+            '--max-length', help='Max length of the line', type=int, default=0)
         self.args = parser.parse_args()
