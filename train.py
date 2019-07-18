@@ -8,6 +8,8 @@ from random import shuffle
 import re
 import numpy as np
 from fastai.text import *
+from fastai.callbacks.tracker import SaveModelCallback
+from fastai.metrics import accuracy
 from src.utils.utils import crate_dir
 from src.args.TrainArgs import TrainArgs
 
@@ -23,7 +25,7 @@ def get_last_epoch(checkpoint_dir):
             values.append(int(match.group(1)))
 
     values.sort()
-    return values[-1] if values else 0
+    return values[-1] + 1 if values else 0
 
 
 def train(model, epochs):
@@ -67,7 +69,7 @@ def main2(data_dir, output_dir, epochs):
 
     print('\033[1;34m', 'Loading data', '\033[0;0m')
     data = load_data(data_dir, 'data_save.pkl')
-    model = language_model_learner(data, text.models.AWD_LSTM, drop_mult=0.5)
+    model = language_model_learner(data, text.models.AWD_LSTM, drop_mult=0.5, metrics=[accuracy])
 
     try:
         print('\033[1;34m', 'Loading checkpoint', '\033[0;0m')
@@ -77,10 +79,8 @@ def main2(data_dir, output_dir, epochs):
         print('\033[1;31m', 'No checkpoint founded', '\033[0;0m')
         pass
 
-    for i in range(last_epoch + 1, last_epoch + 1 + epochs):
-        model.unfreeze()
-        model.fit(1, lr=slice(lr / 2.6, lr), wd=1e-7)
-        model.save("check_" + str(i))
+    
+    model.fit(epochs, lr=slice(lr / 2.6, lr), wd=1e-7, callbacks=[SaveModelCallback(model, every='epoch', monitor='accuracy', name=f'check_{last_epoch}')])
 
     print('\033[0;32m', 'Saving model', '\033[0;0m')
     model.save("last")
